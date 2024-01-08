@@ -1,6 +1,11 @@
+from djoser.serializers import SetPasswordSerializer
 from rest_framework import serializers, status
+from rest_framework.response import Response
+from rest_framework.validators import UniqueTogetherValidator
 
-from users.models import User
+from recipes.models import Tag, Ingredient, Recipe
+from users.models import User, Subscribe
+
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -12,7 +17,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('email', 'id', 'username', 'first_name',
-                  'last_name', 'password',)
+                  'last_name', 'password')
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
@@ -21,8 +26,10 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """
     Сериалайзер для модели User.
-    Доступные функции:
-    - Показать профиль автора рецепта.
+    Отображает:
+    - Профиль текущего пользователя (me).
+    - Профиль автора рецепта (по id).
+    - Список пользователей.
     """
     is_subscribed = serializers.SerializerMethodField(read_only=True)
 
@@ -36,3 +43,96 @@ class UserSerializer(serializers.ModelSerializer):
         if not user.is_anonymous:
             return Subscribe.objects.filter(user=user, author=obj).exists()
         return False
+
+
+class ChangePasswordSerializer(SetPasswordSerializer):
+    """
+    Сериалайзер для смены пароля текущего пользователя.
+    """
+    new_password = serializers.CharField(write_only=True)
+    current_password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ('new_password', 'current_password')
+
+    def create(self, validated_data):
+        user = User.objects.get(username=self.context.get('request').user)
+        user.set_password(validated_data['new_password'])
+        user.save()
+        return Response(
+            'Пароль успешно изменен',
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class SubscriptionsSerializer(serializers.ModelSerializer):
+    """
+    Сериалайзер для отображения подписок текущего пользователя.
+    """
+    is_subscribed = serializers.SerializerMethodField(read_only=True)
+    # recipes = RecipeSerializer(read_only=True, many=True)
+    # recipes_count = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('email', 'id', 'username', 'first_name',
+                  'last_name', 'is_subscribed')
+
+    def get_is_subscribed(self, obj):
+        user = self.context.get('request').user
+        if not user.is_anonymous:
+            return Subscribe.objects.filter(user=user, author=obj).exists()
+        return False
+
+
+class SubscribeSerializer(serializers.ModelSerializer):
+    """
+    Сериалайзер для создания подписки.
+    """
+    email = serializers.CharField(source='author.email', read_only=True)
+    id = serializers.CharField(source='author.id', read_only=True)
+    username = serializers.CharField(source='author.username', read_only=True)
+    first_name = serializers.CharField(source='author.first_name',
+                                       read_only=True)
+    last_name = serializers.CharField(source='author.last_name',
+                                      read_only=True)
+    is_subscribed = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Subscribe
+        fields = ('email', 'id', 'username', 'first_name',
+                  'last_name', 'is_subscribed')
+
+    def get_is_subscribed(self, obj):
+        user = self.context.get('request').user
+        if not user.is_anonymous:
+            return Subscribe.objects.filter(user=user,
+                                            author=obj.author).exists()
+        return False
+
+
+class TagSerializer(serializers.ModelSerializer):
+    """
+    Сериалайзер для тегов.
+    """
+    name = serializers.CharField(read_only=True)
+    color = serializers.CharField(read_only=True)
+    slug = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Tag
+        fields = ('id', 'name', 'color', 'slug')
+        # read_only_fields = ('__all__',)
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+    """
+    Сериалайзер для ингредиентов.
+    """
+
+    class Meta:
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
+        read_only_fields = ('__all__',)
+

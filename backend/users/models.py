@@ -6,7 +6,7 @@ from foodgram.settings import USERNAME_LEN, EMAIL_LEN, F_S_NAME_LEN, PASS_LEN
 
 class User(AbstractUser):
     """
-    Создаёт пользовательский класс User.
+    Custom-Модель User'a.
     """
     email = models.EmailField(
         verbose_name='Email',
@@ -39,6 +39,7 @@ class User(AbstractUser):
         help_text="Придумайте пароль",
     )
     USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'password']
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -48,3 +49,34 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+
+class Subscribe(models.Model):
+    """
+    Подписка на авторов рецептов.
+    """
+    user = models.ForeignKey(
+        User,
+        verbose_name='Пользователь',
+        on_delete=models.CASCADE,
+        related_name='follower',
+        help_text='Выберите Пользователя',
+    )
+    author = models.ForeignKey(
+        User,
+        verbose_name='Подписка',
+        on_delete=models.CASCADE,
+        related_name='followed',
+        help_text='Выберите Автора рецептов',
+    )
+
+    class Meta:
+        verbose_name = 'Подписка на пользователя'
+        verbose_name_plural = 'Подписки на пользователей'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'],
+                name='Уникальная пара: Подписчик-Автор'),
+        ]
+
+    def __str__(self):
+        return f'Подписка {self.user} на {self.author}'

@@ -1,4 +1,10 @@
+import os
+
 from pathlib import Path
+from dotenv import load_dotenv
+from django.core.management.utils import get_random_secret_key
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -15,6 +21,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'djoser',
+    'django_filters',
     'api',
     'recipes',
     'users'
@@ -98,12 +108,11 @@ REST_FRAMEWORK = {
     ],
 }
 
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
 
-META_SYM_NUM = 15
+SYM_NUM = 15
 COLOR_LEN = 7
 NAME_LEN = 200
 SLUG_LEN = 200

@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (UserViewSet, UserMeViewSet, PasswordChangeViewSet,
                     SubscriptionsViewSet, SubscribeViewSet, TagViewSet,
-                    IngredientViewSet)
+                    IngredientViewSet, RecipeViewSet)
 
 app_name = 'api'
 

@@ -112,7 +112,7 @@ class Recipe(models.Model):
     )
     tags = models.ManyToManyField(
         Tag,
-        verbose_name='Название тега',
+        verbose_name='Тег',
         help_text='Выберите Тег',
     )
     pub_date = models.DateTimeField(
@@ -168,4 +168,6 @@ class IngredientRecipe(models.Model):
         ]
 
     def __str__(self):
-        return f'Ингредиент {self.ingredient} в рецепте {self.amount}'
+        return (f'{self.ingredient}-{self.amount} '
+                f'{self.ingredient.measurement_unit}, '
+                f'в рецепте "{self.recipe}"')

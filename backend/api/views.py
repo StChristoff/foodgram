@@ -1,7 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, mixins, status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, SAFE_METHODS
 from rest_framework.response import Response
 
 from .filters import IngredientFilter, RecipeFilter
@@ -149,7 +149,7 @@ class IngredientViewSet(viewsets.ModelViewSet):
     http_method_names = ['get',]
 
 
-lass RecipeViewSet(viewsets.ModelViewSet):
+class RecipeViewSet(viewsets.ModelViewSet):
     """
     Вьюсет для.
     - Получения списка рецептов.
@@ -165,12 +165,16 @@ lass RecipeViewSet(viewsets.ModelViewSet):
       - Удаление рецепта - только автор или администратор.
     """
     queryset = Recipe.objects.select_related('author')
+    serializer_class = RecipeSerializer
     permission_classes = (AllowAny, )
     filter_backends = (DjangoFilterBackend, )
     # pagination_class = ApiPagination
     # filterset_class = RecipeFilter
 
-    def get_serializer_class(self):
-        if self.request.method in SAFE_METHODS:
-            return RecipeSerializer
-        return RecipeCreateSerializer
+    # def get_serializer_class(self):
+    #     if self.request.method in SAFE_METHODS:
+    #         return RecipeSerializer
+    #     return RecipeCreateSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)

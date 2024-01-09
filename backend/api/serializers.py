@@ -156,12 +156,10 @@ class RecipeSerializer(serializers.ModelSerializer):
     Сериалайзер для списка рецептов и отдельного рецепта.
     GET, POST и PATCH запросы.
     """
-    tags = TagSerializer(many=True, read_only=True)
-    author = UserSerializer()
-    ingredients = IngredientRecipeSerializer(
-        many=True,
-        source='ingredient_recipe',
-        read_only=True)
+    tags = TagSerializer(many=True)
+    author = UserSerializer(read_only=True)
+    ingredients = IngredientRecipeSerializer(many=True,
+                                             source='ingredient_recipe')
     # is_favorited = serializers.SerializerMethodField()
     # is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -171,3 +169,18 @@ class RecipeSerializer(serializers.ModelSerializer):
                   # 'is_favorited', 'is_in_shopping_cart',
                   'name', 'image', 'text', 'cooking_time')
 
+    def create(self, validated_data):
+        ingredients = validated_data.pop('ingredients')
+        recipe = Recipe.objects.create(**validated_data)
+        for ingredient in ingredients:
+            current_ingredient, status = Ingredient.objects.get_or_create(
+                name=ingredient.name,
+                measurement_unit=ingredient.measurement_unit)
+            IngredientRecipe.objects.create(
+                ingredient=current_ingredient,
+                recipe=recipe,
+                amount=ingredient.amount)
+        return recipe
+
+class RecipeCreateSerializer(serializers.ModelSerializer):
+    pass

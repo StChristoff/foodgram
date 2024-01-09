@@ -7,7 +7,6 @@ class TagAdmin(admin.ModelAdmin):
     Админ-зона тегов.
     """
     list_display = ('id', 'name', 'color', 'slug',)
-    list_filter = ('id',)
     empty_value_display = '-пусто-'
 
 
@@ -20,13 +19,25 @@ class IngredientAdmin(admin.ModelAdmin):
     empty_value_display = '-пусто-'
 
 
+class IngredientRecipeInline(admin.TabularInline):
+    """
+    Создание поля добавления ингредиентов и их количества
+    при создании рецепта в админ-зоне.
+    """
+    model = IngredientRecipe
+    extra = 1
+
+
 class RecipeAdmin(admin.ModelAdmin):
     """
     Админ-зона рецептов.
     """
-    list_display = ('id', 'name', 'text', 'cooking_time', 'author', 'ingredients', 'tags', 'pub_date')
-    list_filter = ('-pub_date',)
+    list_display = ('id', 'name', 'text', 'cooking_time',
+                    'author', 'pub_date',)
+    filter_horizontal = ('tags',)
+    list_filter = ('author', 'name', 'tags')
     empty_value_display = '-пусто-'
+    inlines = [IngredientRecipeInline]
 
 
 class IngredientRecipeAdmin(admin.ModelAdmin):
@@ -34,7 +45,6 @@ class IngredientRecipeAdmin(admin.ModelAdmin):
     Админ-зона модели связи Ингредиент-Рецепт.
     """
     list_display = ('id', 'ingredient', 'recipe', 'amount')
-    list_filter = ('id',)
     empty_value_display = '-пусто-'
 
 

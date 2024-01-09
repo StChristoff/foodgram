@@ -6,7 +6,8 @@ class UserAdmin(admin.ModelAdmin):
     """
     Админ-зона пользователей.
     """
-    list_display = ('id', 'username', 'email', 'first_name', 'last_name', 'password')
+    list_display = ('id', 'username', 'email', 'first_name', 'last_name',
+                    'password')
     list_filter = ('username', 'email',)
     empty_value_display = '-пусто-'
 

@@ -112,7 +112,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
 
-SYM_NUM = 15
+SYM_NUM = 20
 COLOR_LEN = 7
 NAME_LEN = 200
 SLUG_LEN = 200

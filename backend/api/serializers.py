@@ -3,9 +3,8 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.validators import UniqueTogetherValidator
 
-from recipes.models import Tag, Ingredient, Recipe
+from recipes.models import Tag, Ingredient, Recipe, IngredientRecipe
 from users.models import User, Subscribe
-
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -135,4 +134,40 @@ class IngredientSerializer(serializers.ModelSerializer):
         model = Ingredient
         fields = ('id', 'name', 'measurement_unit')
         read_only_fields = ('__all__',)
+
+
+class IngredientRecipeSerializer(serializers.ModelSerializer):
+    """
+    Сериалайзер для получения ингредиентов в сериалайзере RecipeSerializer.
+    """
+    id = serializers.ReadOnlyField(source='ingredient.id')
+    name = serializers.ReadOnlyField(source='ingredient.name')
+    measurement_unit = serializers.ReadOnlyField(
+        source='ingredient.measurement_unit'
+    )
+
+    class Meta:
+        model = IngredientRecipe
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    """
+    Сериалайзер для списка рецептов и отдельного рецепта.
+    GET, POST и PATCH запросы.
+    """
+    tags = TagSerializer(many=True, read_only=True)
+    author = UserSerializer()
+    ingredients = IngredientRecipeSerializer(
+        many=True,
+        source='ingredient_recipe',
+        read_only=True)
+    # is_favorited = serializers.SerializerMethodField()
+    # is_in_shopping_cart = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'tags', 'author', 'ingredients',
+                  # 'is_favorited', 'is_in_shopping_cart',
+                  'name', 'image', 'text', 'cooking_time')
 

@@ -1,3 +1,4 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, mixins, status
 from rest_framework.permissions import AllowAny
@@ -7,8 +8,9 @@ from .filters import IngredientFilter, RecipeFilter
 from .serializers import (UserCreateSerializer, UserSerializer,
                           ChangePasswordSerializer, SubscriptionsSerializer,
                           SubscribeSerializer, TagSerializer,
-                          IngredientSerializer)
-from recipes.models import Tag, Ingredient, Recipe
+                          IngredientSerializer, RecipeSerializer,
+                          RecipeCreateSerializer)
+from recipes.models import Tag, Ingredient, Recipe, IngredientRecipe
 from users.models import User, Subscribe
 
 
@@ -145,3 +147,30 @@ class IngredientViewSet(viewsets.ModelViewSet):
     filter_backends = (IngredientFilter, )
     search_fields = ('^name',)
     http_method_names = ['get',]
+
+
+lass RecipeViewSet(viewsets.ModelViewSet):
+    """
+    Вьюсет для.
+    - Получения списка рецептов.
+    - Создания рецепта.
+    - Получения отдельного рецепта.
+    - Редактирования рецепта.
+    - Удаления рецепта.
+    Доступ:
+    - Чтение - для всех.
+    - Запись:
+      - Создание рецепта - аутентифицированный пользователь.
+      - Редактирование рецепта - только автор или администратор.
+      - Удаление рецепта - только автор или администратор.
+    """
+    queryset = Recipe.objects.select_related('author')
+    permission_classes = (AllowAny, )
+    filter_backends = (DjangoFilterBackend, )
+    # pagination_class = ApiPagination
+    # filterset_class = RecipeFilter
+
+    def get_serializer_class(self):
+        if self.request.method in SAFE_METHODS:
+            return RecipeSerializer
+        return RecipeCreateSerializer

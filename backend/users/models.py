@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-from foodgram.settings import USERNAME_LEN, EMAIL_LEN, F_S_NAME_LEN, PASS_LEN
+from foodgram.settings import USERNAME_LEN, EMAIL_LEN, F_L_NAME_LEN, PASS_LEN
 
 
 class User(AbstractUser):
@@ -25,12 +25,12 @@ class User(AbstractUser):
     )
     first_name = models.CharField(
         verbose_name='Имя',
-        max_length=F_S_NAME_LEN,
+        max_length=F_L_NAME_LEN,
         help_text="Введите Ваше Имя"
     )
     last_name = models.CharField(
         verbose_name='Фамилия',
-        max_length=F_S_NAME_LEN,
+        max_length=F_L_NAME_LEN,
         help_text="Введите Вашу Фамилию",
     )
     password = models.CharField(

@@ -170,7 +170,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                   'name', 'image', 'text', 'cooking_time')
 
     def create(self, validated_data):
-        ingredients = validated_data.pop('ingredients')
+        ingredients, tags = validated_data.pop('ingredients', 'tags')
         recipe = Recipe.objects.create(**validated_data)
         for ingredient in ingredients:
             current_ingredient, status = Ingredient.objects.get_or_create(

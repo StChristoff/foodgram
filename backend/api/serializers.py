@@ -1,3 +1,5 @@
+import base64
+from django.core.files.base import ContentFile
 from djoser.serializers import SetPasswordSerializer
 from rest_framework import serializers, status
 from rest_framework.response import Response
@@ -115,14 +117,11 @@ class TagSerializer(serializers.ModelSerializer):
     """
     Сериалайзер для тегов.
     """
-    name = serializers.CharField(read_only=True)
-    color = serializers.CharField(read_only=True)
-    slug = serializers.CharField(read_only=True)
 
     class Meta:
         model = Tag
         fields = ('id', 'name', 'color', 'slug')
-        # read_only_fields = ('__all__',)
+        read_only_fields = ('name', 'color', 'slug',)
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -133,35 +132,47 @@ class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
         fields = ('id', 'name', 'measurement_unit')
-        read_only_fields = ('__all__',)
+        read_only_fields = ('name', 'measurement_unit',)
 
 
 class IngredientRecipeSerializer(serializers.ModelSerializer):
     """
     Сериалайзер для получения ингредиентов в сериалайзере RecipeSerializer.
     """
-    id = serializers.ReadOnlyField(source='ingredient.id')
-    name = serializers.ReadOnlyField(source='ingredient.name')
-    measurement_unit = serializers.ReadOnlyField(
-        source='ingredient.measurement_unit'
-    )
+    id = serializers.PrimaryKeyRelatedField(source='ingredient.id',
+                                            queryset=Ingredient.objects.all())
+    name = serializers.CharField(source='ingredient.name', read_only=True)
+    measurement_unit = serializers.CharField(
+        source='ingredient.measurement_unit', read_only=True)
 
     class Meta:
         model = IngredientRecipe
         fields = ('id', 'name', 'measurement_unit', 'amount')
 
 
+class Base64ImageField(serializers.ImageField):
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith('data:image'):
+            format, imgstr = data.split(';base64,')
+            ext = format.split('/')[-1]
+
+            data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
+
+        return super().to_internal_value(data)
+
+
 class RecipeSerializer(serializers.ModelSerializer):
     """
-    Сериалайзер для списка рецептов и отдельного рецепта.
-    GET, POST и PATCH запросы.
+    Сериалайзер для получения списка рецептов и отдельного рецепта.
+    GET запросы.
     """
     tags = TagSerializer(many=True)
-    author = UserSerializer(read_only=True)
+    author = UserSerializer()
     ingredients = IngredientRecipeSerializer(many=True,
                                              source='ingredient_recipe')
     # is_favorited = serializers.SerializerMethodField()
     # is_in_shopping_cart = serializers.SerializerMethodField()
+    image = Base64ImageField()
 
     class Meta:
         model = Recipe
@@ -169,18 +180,67 @@ class RecipeSerializer(serializers.ModelSerializer):
                   # 'is_favorited', 'is_in_shopping_cart',
                   'name', 'image', 'text', 'cooking_time')
 
+    # def get_is_favorited(self, obj):
+    #     user = self.context.get('request').user
+    #     if not user.is_anonymous:
+    #         return Favorite.objects.filter(user=user, recipe=obj).exists()
+    #     return False
+
+    # def get_is_in_shopping_cart(self, obj):
+    #     user = self.context.get('request').user
+    #     if not user.is_anonymous:
+    #         return ShoppingCart.objects.filter(author=user, recipe=obj).exists()
+    #     return False
+
+
+class RecipeCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериалайзер для создания, редактирования и удаления рецепта.
+    POST, PATCH и DELETE запросы.
+    """
+    tags = serializers.PrimaryKeyRelatedField(many=True,
+                                              queryset=Tag.objects.all())
+    # tags = TagSerializer(many=True) # queryset=Tag.objects.all())
+    author = UserSerializer(read_only=True)
+    ingredients = IngredientRecipeSerializer(many=True,
+                                             source='ingredient_recipe')
+    image = Base64ImageField()
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'tags', 'author', 'ingredients',
+                  'name', 'image', 'text', 'cooking_time')
+
     def create(self, validated_data):
-        ingredients, tags = validated_data.pop('ingredients', 'tags')
+        print(f'-----------validated_data={validated_data}')
+        ingredients = validated_data.pop('ingredient_recipe')
+        tags = validated_data.pop('tags')
+        print(f'-----------ingredients={ingredients}')
+        print(f'-----------tags={tags}')
         recipe = Recipe.objects.create(**validated_data)
+        print(f'-----------recipe={recipe}')
         for ingredient in ingredients:
+            print(f'-----------ingredient={ingredient["amount"]}')
             current_ingredient, status = Ingredient.objects.get_or_create(
-                name=ingredient.name,
-                measurement_unit=ingredient.measurement_unit)
+                name=ingredient['ingredient']['id'],
+                measurement_unit=ingredient["ingredient"]["id"].measurement_unit)
             IngredientRecipe.objects.create(
                 ingredient=current_ingredient,
                 recipe=recipe,
-                amount=ingredient.amount)
+                amount=ingredient["amount"])
+        recipe.tags.set(tags)
         return recipe
 
-class RecipeCreateSerializer(serializers.ModelSerializer):
-    pass
+    def update(self, instance, validated_data):
+        print(f'-----------validated_data={validated_data}')
+        print(f'-----------instance={instance}')
+        ingredients = validated_data.pop('ingredient_recipe')
+        tags = validated_data.pop('tags')
+        instance.ingredients.clear()
+        for ingredient in ingredients:
+            IngredientRecipe.objects.update_or_create(
+                recipe=instance,
+                ingredient=ingredient['id'],
+                amount=ingredient['amount'])
+        instance.tags.set(tags)
+        return super().update(instance, validated_data)

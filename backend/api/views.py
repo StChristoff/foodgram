@@ -107,7 +107,12 @@ class SubscribeViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
 
+    def destroy(self, request, *args, **kwargs):
+        print('------Сработал def destroy')
+        return super().destroy(request, *args, **kwargs)
+
     def perform_destroy(self, instance):
+        print('------Сработал def perform_destroy')
         author = User.objects.get(id=self.kwargs.get('id'))
         user = self.request.user
         instance = get_object_or_404(Subscribe, user=user, author=author)
@@ -171,10 +176,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
     # pagination_class = ApiPagination
     # filterset_class = RecipeFilter
 
-    # def get_serializer_class(self):
-    #     if self.request.method in SAFE_METHODS:
-    #         return RecipeSerializer
-    #     return RecipeCreateSerializer
+    def get_serializer_class(self):
+        if self.request.method in SAFE_METHODS:
+            return RecipeSerializer
+        return RecipeCreateSerializer
 
     def perform_create(self, serializer):
+        print(f'author={self.request.user}')
         serializer.save(author=self.request.user)

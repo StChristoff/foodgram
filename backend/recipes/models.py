@@ -171,3 +171,71 @@ class IngredientRecipe(models.Model):
         return (f'{self.ingredient}-{self.amount} '
                 f'{self.ingredient.measurement_unit}, '
                 f'в рецепте "{self.recipe}"')
+
+
+class Favorite(models.Model):
+    """
+    Модель для избранных рецептов.
+    Связь избранных рецептов и пользователя.
+    """
+    user = models.ForeignKey(
+        User,
+        verbose_name='Пользователь',
+        on_delete=models.CASCADE,
+        related_name='favorite',
+        help_text='Выберите Пользователя',
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        verbose_name='Избранный рецепт',
+        on_delete=models.CASCADE,
+        related_name='favorite',
+        help_text='Выберите рецепт',
+    )
+
+    class Meta:
+        verbose_name = 'Избранный рецепт'
+        verbose_name_plural = 'Избранные рецепты'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                name='Уникальная пара для модели избранных рецептов',
+            )
+        ]
+
+    def __str__(self):
+        return f'Рецепт {self.recipe} в избранном у {self.user}'
+
+
+class ShoppingCart(models.Model):
+    """
+    Модель для списка покупок пользователя.
+    Связь пользователя и рецепта в списке покупок.
+    """
+    author = models.ForeignKey(
+        User,
+        verbose_name='Пользователь',
+        on_delete=models.CASCADE,
+        related_name='shopping_cart',
+        help_text='Выберите Пользователя',
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        verbose_name='Рецепт для списка покупок',
+        on_delete=models.CASCADE,
+        related_name='shopping_cart',
+        help_text='Выберите рецепт для списка покупок',
+    )
+
+    class Meta:
+        verbose_name = 'Список покупок'
+        verbose_name_plural = 'Списки покупок'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['author', 'recipe'],
+                name='Уникальная пара для модели списка покупок.',
+            )
+        ]
+
+    def __str__(self):
+        return f'Рецепт {self.recipe} в списке покупок у {self.author}'

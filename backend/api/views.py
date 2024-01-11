@@ -9,7 +9,7 @@ from .serializers import (UserCreateSerializer, UserSerializer,
                           ChangePasswordSerializer, SubscriptionsSerializer,
                           SubscribeSerializer, TagSerializer,
                           IngredientSerializer, RecipeSerializer,
-                          RecipeCreateSerializer)
+                          )
 from recipes.models import Tag, Ingredient, Recipe, IngredientRecipe
 from users.models import User, Subscribe
 
@@ -176,10 +176,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
     # pagination_class = ApiPagination
     # filterset_class = RecipeFilter
 
-    def get_serializer_class(self):
-        if self.request.method in SAFE_METHODS:
-            return RecipeSerializer
-        return RecipeCreateSerializer
+    # def get_serializer_class(self):
+    #     if self.request.method in SAFE_METHODS:
+    #         return RecipeSerializer
+    #     return RecipeCreateSerializer
 
     def perform_create(self, serializer):
         print(f'author={self.request.user}')

@@ -75,7 +75,7 @@ class ChangePasswordSerializer(SetPasswordSerializer):
         user = User.objects.get(username=self.context.get('request').user)
         user.set_password(validated_data['new_password'])
         user.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
             'Пароль успешно изменен',
             status=status.HTTP_204_NO_CONTENT
@@ -241,7 +241,8 @@ class RecipeSerializer(serializers.ModelSerializer):
     """
     tags = serializers.PrimaryKeyRelatedField(many=True,
                                               queryset=Tag.objects.all())
-    author = UserSerializer(read_only=True)
+    author = UserSerializer(read_only=True,
+                            default=serializers.CurrentUserDefault())
     ingredients = IngredientRecipeSerializer(many=True,
                                              source='ingredient_recipe')
     is_favorited = serializers.SerializerMethodField(read_only=True)
@@ -253,6 +254,13 @@ class RecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'tags', 'author', 'ingredients',
                   'is_favorited', 'is_in_shopping_cart',
                   'name', 'image', 'text', 'cooking_time')
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Recipe.objects.all(),
+                fields=('name', 'author'),
+                message='Вы уже добавили рецепт с таким названием.'
+            )
+        ]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -278,7 +286,12 @@ class RecipeSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
+        if 'ingredient_recipe' not in validated_data:
+            raise serializers.ValidationError(
+                {'ingredients': 'Добавьте ингредиенты'})
         ingredients = validated_data.pop('ingredient_recipe')
+        if 'tags' not in validated_data:
+            raise serializers.ValidationError({'tags':'Добавьте теги'})
         tags = validated_data.pop('tags')
         instance.ingredients.clear()
         instance.tags.clear()
@@ -302,8 +315,33 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_in_shopping_cart(self, obj):
         user = self.context.get('request').user
         if not user.is_anonymous:
-            return ShoppingCart.objects.filter(author=user, recipe=obj).exists()
+            return ShoppingCart.objects.filter(author=user,
+                                               recipe=obj).exists()
         return False
+
+    def validate_tags(self, value):
+        tags = value
+        if not tags:
+            raise ValidationError('Выберите тег.')
+        unique_tags = []
+        for tag in tags:
+            if tag in unique_tags:
+                raise ValidationError('Этот тег уже выбран.')
+            unique_tags.append(tag)
+        return value
+
+    def validate_ingredients(self, value):
+        ingredients = value
+        if not ingredients:
+            raise ValidationError('Выберите ингредиент.')
+        unique_ingredients = []
+        for ingredient in ingredients:
+            if ingredient['ingredient']['id'] in unique_ingredients:
+                raise ValidationError('Этот ингредиент уже добавлен.')
+            unique_ingredients.append(ingredient['ingredient']['id'])
+            if ingredient['amount'] <= 0:
+                raise ValidationError('Количество должно быть больше 0.')
+        return value
 
 
 class FavoriteSerializer(serializers.ModelSerializer):

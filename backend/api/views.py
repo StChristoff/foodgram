@@ -6,7 +6,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .filters import RecipeFilter # IngredientFilter, 
+from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import IsAuthorOrReadOnly, IsAuthenticatedOrReadCreateOnly
 from .serializers import (UserCreateSerializer, UserSerializer,
@@ -159,7 +159,8 @@ class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny,)
-    filter_backends = (SearchFilter,)
+    filter_backends = (IngredientFilter,)
+    # filter_backends = (SearchFilter,)
     search_fields = ('^name',)
     http_method_names = ['get',]
 

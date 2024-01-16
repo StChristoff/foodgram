@@ -50,9 +50,10 @@ class UserMeViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
 
-    def get_queryset(self):
-        return User.objects.filter(username=self.request.user)
-
+    def list(self, request, *args, **kwargs):
+        me = self.request.user
+        serializer = self.get_serializer(me)
+        return Response(serializer.data)
 
 class PasswordChangeViewSet(viewsets.ModelViewSet):
     """
@@ -93,8 +94,6 @@ class SubscriptionsViewSet(viewsets.ModelViewSet):
         return User.objects.filter(followed__user=self.request.user)
 
 
-# class SubscribeViewSet(mixins.DestroyModelMixin, mixins.CreateModelMixin,
-#                        viewsets.GenericViewSet):
 class SubscribeViewSet(viewsets.ModelViewSet):
     """
     Вьюсет для создания/отмены подписки.
@@ -103,7 +102,6 @@ class SubscribeViewSet(viewsets.ModelViewSet):
     Все запросы от имени пользователя должны выполняться с заголовком
     "Authorization: Token TOKENVALUE".
     """
-    # queryset = Subscribe.objects.all()
     serializer_class = SubscribeSerializer
     permission_classes = (IsAuthenticated,)
     http_method_names = ['delete', 'post',]
@@ -111,18 +109,27 @@ class SubscribeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         author = get_object_or_404(User, id=self.kwargs.get('pk'))
-        if Subscribe.objects.filter(user=user, author=author).exists():
+        serializer = SubscribeSerializer(
+                data=self.request.data,
+                context={'request': self.request, 'author': author})
+        if serializer.is_valid():
+            serializer.save(author=author, user=user)
             return Response(
-                {'errors': 'Вы уже подписаны на этого автора'},
-                status=status.HTTP_400_BAD_REQUEST)
-        if author == user:
-            return Response(
-                {'errors': 'Вы не можете подписаться на себя'},
-                status=status.HTTP_400_BAD_REQUEST)
-        serializer.save(author=author, user=user)
-        return Response(
-            {'Подписка успешно создана': serializer.data},
-            status=status.HTTP_201_CREATED)
+                {'Подписка успешно создана': serializer.data},
+                status=status.HTTP_201_CREATED
+            )
+        # if Subscribe.objects.filter(user=user, author=author).exists():
+        #     return Response(
+        #         {'errors': 'Вы уже подписаны на этого автора'},
+        #         status=status.HTTP_400_BAD_REQUEST)
+        # if author == user:
+        #     return Response(
+        #         {'errors': 'Вы не можете подписаться на себя'},
+        #         status=status.HTTP_400_BAD_REQUEST)
+        # serializer.save(author=author, user=user)
+        # return Response(
+        #     {'Подписка успешно создана': serializer.data},
+        #     status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user

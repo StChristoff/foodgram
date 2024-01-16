@@ -97,7 +97,8 @@ class SubscriptionsSerializer(serializers.ModelSerializer):
     Сериалайзер для отображения подписок текущего пользователя.
     """
     is_subscribed = serializers.SerializerMethodField(read_only=True)
-    recipes = RecipeSubscriptionsSerializer(read_only=True, many=True)
+    # recipes = RecipeSubscriptionsSerializer(read_only=True, many=True)
+    recipes = serializers.SerializerMethodField(read_only=True)
     recipes_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -110,6 +111,13 @@ class SubscriptionsSerializer(serializers.ModelSerializer):
         if not user.is_anonymous:
             return Subscribe.objects.filter(user=user, author=obj).exists()
         return False
+
+    def get_recipes(self, obj):
+        recipes = obj.recipes.all()
+        limit = self.context.get('request').GET.get('recipes_limit')
+        if limit:
+            recipes = recipes[:int(limit)]
+        return RecipeSubscriptionsSerializer(recipes, many=True).data
 
     def get_recipes_count(self, obj):
         return Recipe.objects.filter(author=obj).count()
@@ -127,8 +135,9 @@ class SubscribeSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source='author.last_name',
                                       read_only=True)
     is_subscribed = serializers.SerializerMethodField(read_only=True)
-    recipes = RecipeSubscriptionsSerializer(
-        source='author.recipes', read_only=True, many=True)
+    # recipes = RecipeSubscriptionsSerializer(
+    #     source='author.recipes', read_only=True, many=True)
+    recipes = serializers.SerializerMethodField(read_only=True)
     recipes_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -137,17 +146,38 @@ class SubscribeSerializer(serializers.ModelSerializer):
                   'is_subscribed', 'recipes', 'recipes_count')
 
     def get_is_subscribed(self, obj):
-        # if not obj.get('author'):
-        #     raise Http404
+        if not obj.get('author'):   # проверка
+            return False            # проверка
         user = self.context.get('request').user
         if not user.is_anonymous:
             return Subscribe.objects.filter(user=user,
                                             author=obj.author).exists()
         return False
 
+    def get_recipes(self, obj):
+        if not obj.get('author'): # проверка
+            return None          # проверка
+        recipes = obj.author.recipes.all()
+        limit = self.context.get('request').GET.get('recipes_limit')
+        if limit:
+            recipes = recipes[:int(limit)]
+        return RecipeSubscriptionsSerializer(recipes, many=True).data
+
     def get_recipes_count(self, obj):
+        if not obj.get('author'): # проверка
+            return None          # проверка
         return Recipe.objects.filter(author=obj.author).count()
 
+    def validate(self, data):
+        author = self.context.get('author')
+        user = self.context.get('request').user
+        if Subscribe.objects.filter(author=author, user=user).exists():
+            raise ValidationError('Вы уже подписаны на этого автора.',
+                                  code=status.HTTP_400_BAD_REQUEST)
+        if user == author:
+            raise ValidationError('Нельзя подписаться на себя!',
+                                  code=status.HTTP_400_BAD_REQUEST)
+        return data
 
 class TagSerializer(serializers.ModelSerializer):
     """
@@ -291,7 +321,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 {'ingredients': 'Добавьте ингредиенты'})
         ingredients = validated_data.pop('ingredient_recipe')
         if 'tags' not in validated_data:
-            raise serializers.ValidationError({'tags':'Добавьте теги'})
+            raise serializers.ValidationError({'tags': 'Добавьте теги'})
         tags = validated_data.pop('tags')
         instance.ingredients.clear()
         instance.tags.clear()
@@ -300,9 +330,6 @@ class RecipeSerializer(serializers.ModelSerializer):
                 recipe=instance,
                 ingredient=ingredient['ingredient']['id'],
                 amount=ingredient['amount'])
-        # for tag in tags:
-        #     tag, status = Tag.objects.get(id=tag['id'])
-        #     instance.tags.add(tag)
         instance.tags.set(tags)
         return super().update(instance, validated_data)
 

@@ -109,31 +109,13 @@ class SubscribeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         author = get_object_or_404(User, id=self.kwargs.get('pk'))
-        serializer = SubscribeSerializer(
-                data=self.request.data,
-                context={'request': self.request, 'author': author})
-        if serializer.is_valid():
-            serializer.save(author=author, user=user)
-            return Response(
-                {'Подписка успешно создана': serializer.data},
-                status=status.HTTP_201_CREATED
-            )
-        # if Subscribe.objects.filter(user=user, author=author).exists():
-        #     return Response(
-        #         {'errors': 'Вы уже подписаны на этого автора'},
-        #         status=status.HTTP_400_BAD_REQUEST)
-        # if author == user:
-        #     return Response(
-        #         {'errors': 'Вы не можете подписаться на себя'},
-        #         status=status.HTTP_400_BAD_REQUEST)
-        # serializer.save(author=author, user=user)
-        # return Response(
-        #     {'Подписка успешно создана': serializer.data},
-        #     status=status.HTTP_201_CREATED)
+        serializer.save(author=author, user=user)
+        return Response('Подписка успешно создана',
+                        status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        author = User.objects.get(id=kwargs.get('pk'))
+        author = get_object_or_404(User, id=kwargs.get('pk'))
         instance = get_object_or_404(Subscribe, user=user, author=author)
         self.perform_destroy(instance)
         return Response('Успешная отписка', status=status.HTTP_204_NO_CONTENT)
@@ -167,7 +149,6 @@ class IngredientViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny,)
     filter_backends = (IngredientFilter,)
-    # filter_backends = (SearchFilter,)
     search_fields = ('^name',)
     http_method_names = ['get',]
 
@@ -220,10 +201,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.shopping_cart.exists():
             return download_cart(self, request, user)
-        return Response(
-            'Список покупок пуст.',
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response('Список покупок пуст.',
+                        status=status.HTTP_404_NOT_FOUND)
 
 
 class FavoriteViewSet(viewsets.ModelViewSet):

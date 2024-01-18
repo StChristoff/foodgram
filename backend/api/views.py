@@ -2,6 +2,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -54,6 +55,7 @@ class UserMeViewSet(viewsets.ModelViewSet):
         me = self.request.user
         serializer = self.get_serializer(me)
         return Response(serializer.data)
+
 
 class PasswordChangeViewSet(viewsets.ModelViewSet):
     """
@@ -115,7 +117,12 @@ class SubscribeViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        author = get_object_or_404(User, id=kwargs.get('pk'))
+        # author = get_object_or_404(User, id=kwargs.get('pk'))
+        try:
+            author = User.objects.get(id=kwargs.get('pk'))
+        except User.DoesNotExist:
+            raise ValidationError('Автор не найден',
+                                  code=status.HTTP_400_BAD_REQUEST)
         instance = get_object_or_404(Subscribe, user=user, author=author)
         self.perform_destroy(instance)
         return Response('Успешная отписка', status=status.HTTP_204_NO_CONTENT)
@@ -220,24 +227,28 @@ class FavoriteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
-        if Favorite.objects.filter(user=user, recipe=recipe).exists():
-            return Response(
-                {'errors': 'Этот рецепт уже в Вашем избранном'},
-                status=status.HTTP_400_BAD_REQUEST)
+        # recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
+        try:
+            recipe = Recipe.objects.get(id=self.kwargs.get('pk'))
+        except Recipe.DoesNotExist:
+            raise ValidationError('Рецепт не найден',
+                                  code=status.HTTP_400_BAD_REQUEST)
         serializer.save(user=user, recipe=recipe)
-        return Response(
-            {'Рецепт добавлен в избранное': serializer.data},
-            status=status.HTTP_201_CREATED
-        )
+        return Response('Рецепт добавлен в избранное',
+                        status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        recipe = Recipe.objects.get(id=kwargs.get('pk'))
+        # recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
+        try:
+            recipe = Recipe.objects.get(id=kwargs.get('pk'))
+        except Recipe.DoesNotExist:
+            raise ValidationError('Рецепт не найден',
+                                  code=status.HTTP_400_BAD_REQUEST)
         instance = get_object_or_404(Favorite, user=user, recipe=recipe)
         self.perform_destroy(instance)
-        return Response(
-            'Рецепт удалён из избранного', status=status.HTTP_204_NO_CONTENT)
+        return Response('Рецепт удалён из избранного',
+                        status=status.HTTP_204_NO_CONTENT)
 
 
 class ShoppingCartViewSet(viewsets.ModelViewSet):
@@ -255,22 +266,25 @@ class ShoppingCartViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
-        if ShoppingCart.objects.filter(author=user, recipe=recipe).exists():
-            return Response(
-                {'errors': 'Этот рецепт уже в Вашем списке покупок'},
-                status=status.HTTP_400_BAD_REQUEST)
+        # recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
+        try:
+            recipe = Recipe.objects.get(id=self.kwargs.get('pk'))
+        except Recipe.DoesNotExist:
+            raise ValidationError('Рецепт не найден',
+                                  code=status.HTTP_400_BAD_REQUEST)
         serializer.save(author=user, recipe=recipe)
-        return Response(
-            {'Рецепт добавлен в список покупок': serializer.data},
-            status=status.HTTP_201_CREATED
-        )
+        return Response('Рецепт добавлен в список покупок',
+                        status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        recipe = Recipe.objects.get(id=kwargs.get('pk'))
+        # recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
+        try:
+            recipe = Recipe.objects.get(id=kwargs.get('pk'))
+        except Recipe.DoesNotExist:
+            raise ValidationError('Рецепт не найден',
+                                  code=status.HTTP_400_BAD_REQUEST)
         instance = get_object_or_404(ShoppingCart, author=user, recipe=recipe)
         self.perform_destroy(instance)
-        return Response(
-            'Рецепт удалён из списка покупок',
-            status=status.HTTP_204_NO_CONTENT)
+        return Response('Рецепт удалён из списка покупок',
+                        status=status.HTTP_204_NO_CONTENT)

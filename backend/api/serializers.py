@@ -124,7 +124,7 @@ class SubscribeSerializer(serializers.ModelSerializer):
     Сериалайзер для создания/удаления подписки.
     """
     email = serializers.CharField(source='author.email', read_only=True)
-    id = serializers.CharField(source='author.id', read_only=True)
+    id = serializers.IntegerField(source='author.id', read_only=True)
     username = serializers.CharField(source='author.username', read_only=True)
     first_name = serializers.CharField(source='author.first_name',
                                        read_only=True)
@@ -329,27 +329,53 @@ class FavoriteSerializer(serializers.ModelSerializer):
     """
     Сериалайзер для добавления/удаления в избранное.
     """
-    id = serializers.CharField(source='recipe.id', read_only=True)
+    id = serializers.IntegerField(source='recipe.id', read_only=True)
     name = serializers.CharField(source='recipe.name', read_only=True)
     image = serializers.CharField(source='recipe.image', read_only=True)
-    cooking_time = serializers.CharField(source='recipe.cooking_time',
-                                         read_only=True)
+    cooking_time = serializers.IntegerField(source='recipe.cooking_time',
+                                            read_only=True)
 
     class Meta:
         model = Favorite
         fields = ('id', 'name', 'image', 'cooking_time')
+
+    def validate(self, data):
+        pk = self.context['request'].parser_context['kwargs']['pk']
+        user = self.context.get('request').user
+        # recipe = get_object_or_404(Recipe, id=pk)
+        try:
+            recipe = Recipe.objects.get(id=pk)
+        except Recipe.DoesNotExist:
+            raise ValidationError('Рецепт не найден',
+                                  code=status.HTTP_400_BAD_REQUEST)
+        if Favorite.objects.filter(user=user,
+                                   recipe=recipe).exists():
+            raise ValidationError('Вы уже добавили этот рецепт в избранное.',
+                                  code=status.HTTP_400_BAD_REQUEST)
+        return data
 
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
     """
     Сериалайзер для добавления/удаления в список покупок.
     """
-    id = serializers.CharField(source='recipe.id', read_only=True)
+    id = serializers.IntegerField(source='recipe.id', read_only=True)
     name = serializers.CharField(source='recipe.name', read_only=True)
     image = serializers.CharField(source='recipe.image', read_only=True)
-    cooking_time = serializers.CharField(source='recipe.cooking_time',
+    cooking_time = serializers.IntegerField(source='recipe.cooking_time',
                                          read_only=True)
 
     class Meta:
         model = ShoppingCart
         fields = ('id', 'name', 'image', 'cooking_time')
+
+    def validate(self, data):
+        pk = self.context['request'].parser_context['kwargs']['pk']
+        user = self.context.get('request').user
+        recipe = get_object_or_404(Recipe, id=pk)
+        if ShoppingCart.objects.filter(author=user,
+                                       recipe=recipe).exists():
+            raise ValidationError('Вы уже добавили этот рецепт '
+                                  'в список покупок.',
+                                  code=status.HTTP_400_BAD_REQUEST)
+        return data

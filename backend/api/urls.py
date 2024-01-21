@@ -14,20 +14,9 @@ router.register('users/set_password',
                 PasswordChangeViewSet, basename='passchange')
 router.register('users/subscriptions',
                 SubscriptionsViewSet, basename='subscriptions')
-# router.register(r'users/(?P<id>\d+)/subscribe',
-#                 SubscribeViewSet, basename='subscribe')
-# router.register('users/<int:pk>/subscribe/',
-#                 SubscribeViewSet.as_view(
-#                     {'delete': 'destroy', 'post': 'create'}),
-#                 basename='subscribe')
 router.register('users', UserViewSet, basename='users')
 router.register('tags', TagViewSet, basename='tags')
 router.register('ingredients', IngredientViewSet, basename='ingredients')
-# router.register(r'recipes/(?P<id>\d+)/favorite',
-#                 FavoriteViewSet, basename='favorite')
-# router.register('recipes/download_shopping_cart/',
-#                 DlShoppingCartViewSet,
-#                 basename='dl_shopping_cart')
 router.register('recipes', RecipeViewSet, basename='recipes')
 
 

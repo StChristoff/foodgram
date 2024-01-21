@@ -5,9 +5,9 @@ from foodgram.settings import COLOR_LEN, NAME_LEN, SLUG_LEN, SYM_NUM
 
 from users.models import User
 
-ORANGE = 'ff8000'
-GREEN = '008000'
-BLUE = '0096ff'
+ORANGE = '#ff8000'
+GREEN = '#008000'
+BLUE = '#0096ff'
 COLOR_CHOICES = (
     (ORANGE, 'Оранжевый'),
     (GREEN, 'Зеленый'),

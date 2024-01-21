@@ -1,15 +1,14 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from django.shortcuts import render, get_object_or_404
-from rest_framework import viewsets, mixins, status
+from django.shortcuts import get_object_or_404
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPageNumberPagination
-from .permissions import IsAuthorOrReadOnly, IsAuthenticatedOrReadCreateOnly
+from .permissions import IsAuthorOrReadOnly, ReadOrCreateOnly
 from .serializers import (UserCreateSerializer, UserSerializer,
                           ChangePasswordSerializer, SubscriptionsSerializer,
                           SubscribeSerializer, TagSerializer,
@@ -25,14 +24,16 @@ class UserViewSet(viewsets.ModelViewSet):
     Вьюсет для:
     - UserCreateSerializer: Создание пользователя
     - UserSerializer:
-      Просмотр списка пользователей.
+      Просмотр списка авторов.
+      Просмотр профиля автора.
     Доступ:
-    - Просмотр списка пользователей (UserSerializer) - для всех.
+    - Просмотр списка и профиля авторов (UserSerializer) - для всех.
     - Создание пользователя (UserCreateSerializer) - для всех.
     """
     queryset = User.objects.all()
-    permission_classes = (IsAuthenticatedOrReadCreateOnly,)
+    permission_classes = (ReadOrCreateOnly,)
     pagination_class = CustomPageNumberPagination
+    http_method_names = ['get', 'post',]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -67,17 +68,6 @@ class PasswordChangeViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ChangePasswordSerializer
     permission_classes = (IsAuthenticated,)
-
-    # def perform_create(self, serializer):
-    #     print(f'-------serializer={serializer}\n')
-    #     print(f'-------serializer.data={serializer.data}\n')
-    #     serializer = ChangePasswordSerializer(data=serializer.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(status=status.HTTP_204_NO_CONTENT)
-    #     else:
-    #         return Response(serializer.errors,
-    #                         status=status.HTTP_400_BAD_REQUEST)
 
 
 class SubscriptionsViewSet(viewsets.ModelViewSet):
@@ -117,13 +107,12 @@ class SubscribeViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        # author = get_object_or_404(User, id=kwargs.get('pk'))
+        author = get_object_or_404(User, id=kwargs.get('pk'))
         try:
-            author = User.objects.get(id=kwargs.get('pk'))
-        except User.DoesNotExist:
-            raise ValidationError('Автор не найден',
+            instance = Subscribe.objects.get(user=user, author=author)
+        except Subscribe.DoesNotExist:
+            raise ValidationError({'errors': 'Нет подписки на этого автора'},
                                   code=status.HTTP_400_BAD_REQUEST)
-        instance = get_object_or_404(Subscribe, user=user, author=author)
         self.perform_destroy(instance)
         return Response('Успешная отписка', status=status.HTTP_204_NO_CONTENT)
 
@@ -162,18 +151,17 @@ class IngredientViewSet(viewsets.ModelViewSet):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     """
-    Вьюсет для.
+    Вьюсет для:
     - Получения списка рецептов.
-    - Создания рецепта.
     - Получения отдельного рецепта.
+    - Создания рецепта.
     - Редактирования рецепта.
     - Удаления рецепта.
     Доступ:
     - Чтение - для всех.
     - Запись:
       - Создание рецепта - аутентифицированный пользователь.
-      - Редактирование рецепта - только автор или администратор.
-      - Удаление рецепта - только автор или администратор.
+      - Редактирование и удаление рецепта - только автор.
     """
     queryset = Recipe.objects.select_related('author')
     serializer_class = RecipeSerializer
@@ -182,13 +170,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend, )
     filterset_class = RecipeFilter
 
-    # def get_serializer_class(self):
-    #     if self.request.method in SAFE_METHODS:
-    #         return RecipeSerializer
-    #     return RecipeCreateSerializer
-
     def perform_create(self, serializer):
-        print(f'author={self.request.user}')
         serializer.save(author=self.request.user)
 
     @action(
@@ -214,7 +196,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 class FavoriteViewSet(viewsets.ModelViewSet):
     """
-    Вьюсет для добавления/удаления избранного рецепта.
+    Вьюсет для добавления/удаления рецепта в избранное.
     Доступ:
     Доступно только авторизованному пользователю.
     Авторизация по токену.
@@ -227,11 +209,10 @@ class FavoriteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        # recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
         try:
             recipe = Recipe.objects.get(id=self.kwargs.get('pk'))
         except Recipe.DoesNotExist:
-            raise ValidationError('Рецепт не найден',
+            raise ValidationError({'errors': 'Рецепт не найден'},
                                   code=status.HTTP_400_BAD_REQUEST)
         serializer.save(user=user, recipe=recipe)
         return Response('Рецепт добавлен в избранное',
@@ -239,13 +220,12 @@ class FavoriteViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        # recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
+        recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
         try:
-            recipe = Recipe.objects.get(id=kwargs.get('pk'))
-        except Recipe.DoesNotExist:
-            raise ValidationError('Рецепт не найден',
+            instance = Favorite.objects.get(user=user, recipe=recipe)
+        except Favorite.DoesNotExist:
+            raise ValidationError({'errors': 'Этот рецепт не в избранном'},
                                   code=status.HTTP_400_BAD_REQUEST)
-        instance = get_object_or_404(Favorite, user=user, recipe=recipe)
         self.perform_destroy(instance)
         return Response('Рецепт удалён из избранного',
                         status=status.HTTP_204_NO_CONTENT)
@@ -253,7 +233,7 @@ class FavoriteViewSet(viewsets.ModelViewSet):
 
 class ShoppingCartViewSet(viewsets.ModelViewSet):
     """
-    Вьюсет для добавления/удаления в список покупок.
+    Вьюсет для добавления/удаления рецепта в список покупок.
     Доступ:
     Доступно только авторизованному пользователю.
     Авторизация по токену.
@@ -266,11 +246,10 @@ class ShoppingCartViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        # recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
         try:
             recipe = Recipe.objects.get(id=self.kwargs.get('pk'))
         except Recipe.DoesNotExist:
-            raise ValidationError('Рецепт не найден',
+            raise ValidationError({'errors': 'Рецепт не найден'},
                                   code=status.HTTP_400_BAD_REQUEST)
         serializer.save(author=user, recipe=recipe)
         return Response('Рецепт добавлен в список покупок',
@@ -278,13 +257,13 @@ class ShoppingCartViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        # recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
+        recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
         try:
-            recipe = Recipe.objects.get(id=kwargs.get('pk'))
-        except Recipe.DoesNotExist:
-            raise ValidationError('Рецепт не найден',
+            instance = ShoppingCart.objects.get(author=user, recipe=recipe)
+        except ShoppingCart.DoesNotExist:
+            raise ValidationError({'errors': 'Этот рецепт '
+                                   'не в списке покупок'},
                                   code=status.HTTP_400_BAD_REQUEST)
-        instance = get_object_or_404(ShoppingCart, author=user, recipe=recipe)
         self.perform_destroy(instance)
         return Response('Рецепт удалён из списка покупок',
                         status=status.HTTP_204_NO_CONTENT)

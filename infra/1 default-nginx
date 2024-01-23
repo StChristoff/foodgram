@@ -1,0 +1,28 @@
+server {
+    server_name 84.252.141.240 fooagram.hopto.org;
+    server_tokens off;
+
+    location / {
+# Иначе будет формироваться стремная ссылка с 127.0.0.1 в адресе.
+        proxy_set_header Host $http_host;
+        proxy_pass http://127.0.0.1:8000;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/fooagram.hopto.org/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/fooagram.hopto.org/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+}
+
+server {
+    if ($host = fooagram.hopto.org) {
+        return 301 https://$host$request_uri;
+    }
+
+    listen 80;
+    server_name fooagram.hopto.org;
+    return 404;
+
+}

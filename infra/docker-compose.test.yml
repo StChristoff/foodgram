@@ -1,0 +1,50 @@
+version: '3.3'
+services:
+
+  db:
+    image: postgres:13.0-alpine
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+
+  frontend:
+    env_file: .env
+    build: ../frontend/
+    # Контейнер соберет фронт и положит в папку build, а мы его копируем
+    # в папку /frontend_static/
+    command: cp -r /app/build/. /frontend_static/
+    volumes:
+     # Собранный фронт лежит в папке контейнера /frontend_static
+      - static:/frontend_static
+    depends_on:
+      - db
+
+  backend:
+    build: ../backend/
+    env_file: .env
+    volumes:
+    # Нам нужно собрать статику, а потом скопировать ее в папку
+    # контейнера /backend_static руками.
+    # docker compose exec backend cp -r /app/collected_static/. /backend_static/static/
+      - static:/backend_static
+    # Медиа будет сохраняться в папку котнейнера /media
+      - media:/media
+
+  gateway:
+    build: ../nginx/
+    env_file: .env
+    ports:
+      - 8000:80
+    volumes:
+      - static:/staticfiles
+      - media:/media
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  static:
+  media:

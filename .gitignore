@@ -136,3 +136,5 @@ dmypy.json
 
 # .idea
 .idea
+test_nginx.conf
+test_docker-compose.yml

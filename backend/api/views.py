@@ -33,7 +33,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     permission_classes = (ReadOrCreateOnly,)
     pagination_class = CustomPageNumberPagination
-    http_method_names = ['get', 'post',]
+    http_method_names = ['get', 'post', ]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -96,7 +96,7 @@ class SubscribeViewSet(viewsets.ModelViewSet):
     """
     serializer_class = SubscribeSerializer
     permission_classes = (IsAuthenticated,)
-    http_method_names = ['delete', 'post',]
+    http_method_names = ['delete', 'post', ]
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -129,7 +129,7 @@ class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = (AllowAny, )
-    http_method_names = ['get',]
+    http_method_names = ['get', ]
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
@@ -146,7 +146,7 @@ class IngredientViewSet(viewsets.ModelViewSet):
     permission_classes = (AllowAny,)
     filter_backends = (IngredientFilter,)
     search_fields = ('^name',)
-    http_method_names = ['get',]
+    http_method_names = ['get', ]
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -205,7 +205,7 @@ class FavoriteViewSet(viewsets.ModelViewSet):
     """
     serializer_class = FavoriteSerializer
     permission_classes = (IsAuthenticated,)
-    http_method_names = ['delete', 'post',]
+    http_method_names = ['delete', 'post', ]
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -242,7 +242,7 @@ class ShoppingCartViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ShoppingCartSerializer
     permission_classes = (IsAuthenticated,)
-    http_method_names = ['delete', 'post',]
+    http_method_names = ['delete', 'post', ]
 
     def perform_create(self, serializer):
         user = self.request.user

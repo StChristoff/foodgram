@@ -139,3 +139,4 @@ dmypy.json
 test_nginx.conf
 test_docker-compose.yml
 fonts/
+test_files/

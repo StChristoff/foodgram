@@ -1,8 +1,10 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as UAdmin
+from django.contrib.auth.models import Group
 from .models import User, Subscribe
 
 
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(UAdmin):
     """
     Админ-зона пользователей.
     """
@@ -22,3 +24,4 @@ class SubscribeAdmin(admin.ModelAdmin):
 
 admin.site.register(User, UserAdmin)
 admin.site.register(Subscribe, SubscribeAdmin)
+admin.site.unregister(Group)

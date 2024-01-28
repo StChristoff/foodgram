@@ -1,16 +1,20 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.validators import UnicodeUsernameValidator
 
-from foodgram.settings import USERNAME_LEN, EMAIL_LEN, F_L_NAME_LEN, PASS_LEN
+from foodgram.constants import (USERNAME_LEN, FIRST_NAME_LEN,
+                                LAST_NAME_LEN, PASS_LEN)
 
 
 class User(AbstractUser):
     """
     Custom-Модель User'a.
     """
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'password']
+
     email = models.EmailField(
         verbose_name='Email',
-        max_length=EMAIL_LEN,
         unique=True,
         help_text="Введите адрес электронной почты.",
     )
@@ -22,15 +26,16 @@ class User(AbstractUser):
             f'Введите Псевдоним (не более {USERNAME_LEN} символов). '
             f'Допускаются буквы, цифры, символы @/./+/-/_ .'
         ),
+        validators=[UnicodeUsernameValidator],
     )
     first_name = models.CharField(
         verbose_name='Имя',
-        max_length=F_L_NAME_LEN,
+        max_length=FIRST_NAME_LEN,
         help_text="Введите Ваше Имя"
     )
     last_name = models.CharField(
         verbose_name='Фамилия',
-        max_length=F_L_NAME_LEN,
+        max_length=LAST_NAME_LEN,
         help_text="Введите Вашу Фамилию",
     )
     password = models.CharField(
@@ -38,8 +43,6 @@ class User(AbstractUser):
         max_length=PASS_LEN,
         help_text="Придумайте пароль",
     )
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'password']
 
     class Meta:
         verbose_name = 'Пользователь'

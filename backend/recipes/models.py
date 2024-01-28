@@ -1,18 +1,22 @@
+from colorfield.fields import ColorField
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 
-from foodgram.settings import COLOR_LEN, NAME_LEN, SLUG_LEN, SYM_NUM
-
+from foodgram.constants import (NAME_LEN, SLUG_LEN, SYM_NUM, MEASURE_UNIT,
+                                COLOR_LEN, MIN_COOK_TIME, MAX_COOK_TIME,
+                                MIN_COOK_TIME_MESS, MAX_COOK_TIME_MESS,
+                                MIN_AMOUNT, MAX_AMOUNT, MIN_AMOUNT_MESS,
+                                MAX_AMOUNT_MESS)
 from users.models import User
 
-ORANGE = '#ff8000'
-GREEN = '#008000'
-BLUE = '#0096ff'
-COLOR_CHOICES = (
-    (ORANGE, 'Оранжевый'),
-    (GREEN, 'Зеленый'),
-    (BLUE, 'Синий'),
-)
+# ORANGE = '#ff8000'
+# GREEN = '#008000'
+# BLUE = '#0096ff'
+# COLOR_CHOICES = (
+#     (ORANGE, 'Оранжевый'),
+#     (GREEN, 'Зеленый'),
+#     (BLUE, 'Синий'),
+# )
 
 
 class Tag(models.Model):
@@ -25,11 +29,10 @@ class Tag(models.Model):
         unique=True,
         help_text='Введите имя тега',
     )
-    color = models.CharField(
+    color = ColorField(
         verbose_name='Цвет тега',
         max_length=COLOR_LEN,
         unique=True,
-        choices=COLOR_CHOICES,
         help_text='Выберите цвет',
     )
     slug = models.SlugField(
@@ -59,7 +62,7 @@ class Ingredient(models.Model):
     )
     measurement_unit = models.CharField(
         verbose_name='Единица измерения',
-        max_length=SLUG_LEN,
+        max_length=MEASURE_UNIT,
         help_text='Введите единицу измерения',
     )
 
@@ -67,6 +70,12 @@ class Ingredient(models.Model):
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
         ordering = ('name',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'measurement_unit'],
+                name='Уникальный ингредиент',
+            )
+        ]
 
     def __str__(self):
         return self.name[:SYM_NUM]
@@ -94,8 +103,10 @@ class Recipe(models.Model):
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления',
         help_text='Введите время приготовления блюда в минутах',
-        validators=[MinValueValidator(
-            1, 'Минимальное время приготовления - 1 минута')],
+        validators=[
+            MinValueValidator(MIN_COOK_TIME, MIN_COOK_TIME_MESS),
+            MaxValueValidator(MAX_COOK_TIME, MAX_COOK_TIME_MESS),
+        ],
     )
     author = models.ForeignKey(
         User,
@@ -124,12 +135,6 @@ class Recipe(models.Model):
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
         ordering = ('-pub_date',)
-        constraints = [
-            models.UniqueConstraint(
-                fields=['name', 'author'],
-                name='Уникальный рецепт',
-            )
-        ]
 
     def __str__(self):
         return self.name[:SYM_NUM]
@@ -155,6 +160,10 @@ class IngredientRecipe(models.Model):
     amount = models.PositiveSmallIntegerField(
         verbose_name='Количество',
         help_text='Укажите количество выбранного ингредиента',
+        validators=[
+            MinValueValidator(MIN_AMOUNT, MIN_AMOUNT_MESS),
+            MaxValueValidator(MAX_AMOUNT, MAX_AMOUNT_MESS),
+        ],
     )
 
     class Meta:
@@ -168,9 +177,7 @@ class IngredientRecipe(models.Model):
         ]
 
     def __str__(self):
-        return (f'{self.ingredient}-{self.amount} '
-                f'{self.ingredient.measurement_unit}, '
-                f'в рецепте "{self.recipe}"')
+        return f'{self.ingredient}-{self.amount} в рецепте "{self.recipe}"'
 
 
 class Favorite(models.Model):

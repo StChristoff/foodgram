@@ -34,23 +34,20 @@ class CustomUserViewSet(UserViewSet):
       Получение токена (auth/token/login/, реализовано на Djoser).
       Смена пароля пользователя (users/set_password/, реализовано на Djoser).
       Получение списка подписок текущего пользователя (users/subscriptions/).
-      Создание и удаление подписки на автора (users/<int:pk>/subscribe/).
+      Создание и удаление подписки на автора (users/<int:id>/subscribe/).
 
     Доступ:
     - Просмотр списка и профиля авторов (UserSerializer) - для всех.
     - Создание пользователя (UserCreateSerializer) - для всех.
     """
     queryset = User.objects.all()
-    permission_classes = (IsAuthenticatedOrReadOnly,)
     pagination_class = CustomPageNumberPagination
     serializer_class = CustomUserSerializer
-    http_method_names = ['get', 'post', ]
 
     def get_permissions(self):
         if self.action == 'me':
             return [IsAuthenticated(),]
         return super().get_permissions()
-        # return [IsAuthenticatedOrReadOnly(),]
 
     @action(detail=False,
             methods=['get'],
@@ -86,7 +83,7 @@ class CustomUserViewSet(UserViewSet):
         "Authorization: Token TOKENVALUE".
         """
         user = self.request.user
-        author = get_object_or_404(User, id=self.kwargs.get('pk'))
+        author = get_object_or_404(User, id=self.kwargs.get('id'))
         if request.method == 'POST':
             serializer = SubscribeSerializer(
                 data=request.data,
@@ -95,15 +92,13 @@ class CustomUserViewSet(UserViewSet):
                 serializer.save(author=author, user=user)
                 return Response({'Подписка успешно создана': serializer.data},
                                 status=status.HTTP_201_CREATED)
-            return Response(serializer.errors,
-                            status=status.HTTP_404_NOT_FOUND)
         delete_cnt, _ = Subscribe.objects.filter(user=user,
                                                  author=author).delete()
         if not delete_cnt:
             return Response({'errors': 'Нет подписки на этого автора'},
-                                  code=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_400_BAD_REQUEST)
         return Response('Успешная отписка',
-                            status=status.HTTP_204_NO_CONTENT)
+                        status=status.HTTP_204_NO_CONTENT)
     
         # try:
         #     Subscribe.objects.get(user=user, author=author).delete()
@@ -322,7 +317,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         "Authorization: Token TOKENVALUE".
         """
         user = self.request.user
-        recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
+        recipe = get_object_or_404(Recipe, id=self.kwargs.get('id'))
         if request.method == 'POST':
             serializer = FavoriteSerializer(data=request.data)
             if serializer.is_valid():
@@ -337,7 +332,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                                                 recipe=recipe).delete()
         if not delete_cnt:
             return Response({'errors': 'Этот рецепт не в избранном'},
-                                  code=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_400_BAD_REQUEST)
         return Response('Рецепт удалён из избранного',
                         status=status.HTTP_204_NO_CONTENT)
 
@@ -356,7 +351,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         "Authorization: Token TOKENVALUE".
         """
         user = self.request.user
-        recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
+        recipe = get_object_or_404(Recipe, id=self.kwargs.get('id'))
         if request.method == 'POST':
             serializer = ShoppingCartSerializer(data=request.data)
             if serializer.is_valid():
@@ -371,7 +366,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                                                     recipe=recipe).delete()
         if not delete_cnt:
             return Response({'errors': 'Этот рецепт не в списке покупок'},
-                            code=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_400_BAD_REQUEST)
         return Response('Рецепт удалён из списка покупок',
                         status=status.HTTP_204_NO_CONTENT)
 

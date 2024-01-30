@@ -24,11 +24,12 @@ class CustomUserSerializer(serializers.ModelSerializer):
     GET и POST запросы.
     """
     is_subscribed = serializers.SerializerMethodField(read_only=True)
+    password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
         fields = ('email', 'id', 'username', 'first_name',
-                  'last_name', 'is_subscribed')
+                  'last_name', 'is_subscribed', 'password')
 
     def get_is_subscribed(self, obj):
         return bool(
@@ -119,7 +120,7 @@ class SubscribeSerializer(serializers.ModelSerializer):
         return Recipe.objects.filter(author=obj.author).count()
 
     def validate(self, data):
-        pk = self.context['request'].parser_context['kwargs']['pk']
+        pk = self.context['request'].parser_context['kwargs']['id']
         user = self.context.get('request').user
         author = get_object_or_404(User, id=pk)
         if Subscribe.objects.filter(user=user, author=author).exists():
@@ -228,6 +229,8 @@ class RecipeCreateSerializer(RecipeGetSerializer):
     - Редактирование (PATCH) и удаление (DELETE) - только автор рецепта.
 
     """
+    tags = serializers.PrimaryKeyRelatedField(many=True,
+                                              queryset=Tag.objects.all())
     author = CustomUserSerializer(read_only=True,
                                   default=serializers.CurrentUserDefault())
     ingredients = IngredientRecipeCreateSerializer(many=True)
@@ -241,9 +244,14 @@ class RecipeCreateSerializer(RecipeGetSerializer):
         return super().to_representation(instance)
 
     def create(self, validated_data):
-        ingredients = validated_data.pop('ingredient_recipe')
+        print(f'\n------Сработал def create')
+        print(f'------validated_data={validated_data}\n')
+
+        author = self.context.get('request').user
+        ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
+        recipe.author.set(author)
         for ingredient in ingredients:
             current_ingredient, status = Ingredient.objects.get_or_create(
                 name=ingredient['ingredient']['id'],
@@ -344,7 +352,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
         print(f'\n------Сработал def validate')
         print(f'------data={data}\n')
 
-        pk = self.context['request'].parser_context['kwargs']['pk']
+        pk = self.context['request'].parser_context['kwargs']['id']
         user = self.context.get('request').user
         try:
             recipe = Recipe.objects.get(id=pk)
@@ -406,7 +414,7 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
     def validate(self, data):
-        pk = self.context['request'].parser_context['kwargs']['pk']
+        pk = self.context['request'].parser_context['kwargs']['id']
         user = self.context.get('request').user
         try:
             recipe = Recipe.objects.get(id=pk)

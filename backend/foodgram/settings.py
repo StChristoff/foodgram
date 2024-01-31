@@ -126,9 +126,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
 
 DJOSER = {
-    'VIEW_SETS': {
-        'user': 'api.views.CustomUserViewSet',
-    },
     'SERIALIZERS': {
         'user': 'api.serializers.CustomUserSerializer',
     },

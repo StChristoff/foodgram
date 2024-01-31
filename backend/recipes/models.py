@@ -9,15 +9,6 @@ from foodgram.constants import (NAME_LEN, SLUG_LEN, SYM_NUM, MEASURE_UNIT,
                                 MAX_AMOUNT_MESS)
 from users.models import User
 
-# ORANGE = '#ff8000'
-# GREEN = '#008000'
-# BLUE = '#0096ff'
-# COLOR_CHOICES = (
-#     (ORANGE, 'Оранжевый'),
-#     (GREEN, 'Зеленый'),
-#     (BLUE, 'Синий'),
-# )
-
 
 class Tag(models.Model):
     """

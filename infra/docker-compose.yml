@@ -10,8 +10,7 @@ services:
       - "5432:5432"
 
   frontend:
-    image: stchristoffor/foodgram_frontend
-    # build: ../frontend
+    build: ../frontend
     volumes:
       - static:/app/result_build/
     depends_on:

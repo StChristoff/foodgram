@@ -140,3 +140,4 @@ test_nginx.conf
 test_docker-compose.yml
 fonts/
 test_files/
+infra_test/

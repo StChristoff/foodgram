@@ -1,5 +1,4 @@
 from django.core.exceptions import ValidationError
-from django.shortcuts import get_object_or_404
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers, status
 
@@ -78,46 +77,21 @@ class SubscribeSerializer(serializers.ModelSerializer):
     Сериалайзер для создания/удаления подписки.
     Только POST и DELETE запросы.
     """
-    email = serializers.CharField(source='author.email', read_only=True)
-    id = serializers.IntegerField(source='author.id', read_only=True)
-    username = serializers.CharField(source='author.username', read_only=True)
-    first_name = serializers.CharField(source='author.first_name',
-                                       read_only=True)
-    last_name = serializers.CharField(source='author.last_name',
-                                      read_only=True)
-    is_subscribed = serializers.SerializerMethodField(read_only=True)
-    recipes = serializers.SerializerMethodField(read_only=True)
-    recipes_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Subscribe
-        fields = ('email', 'id', 'username', 'first_name', 'last_name',
-                  'is_subscribed', 'recipes', 'recipes_count')
+        fields = ('user', 'author')
 
-    def get_is_subscribed(self, obj):
-        user = self.context.get('request').user
-        return Subscribe.objects.filter(user=user, author=obj.author).exists()
-
-    def get_recipes(self, obj):
-        recipes = obj.author.recipes.all()
-        limit = self.context.get('request').GET.get('recipes_limit')
-        if limit:
-            try:
-                recipes = recipes[:int(limit)]
-            except ValidationError:
-                raise ValidationError({'errors': 'Неверный формат limit'},
-                                      code=status.HTTP_400_BAD_REQUEST)
-        return RecipeSubscriptionsSerializer(recipes, many=True).data
-
-    def get_recipes_count(self, obj):
-        return Recipe.objects.filter(author=obj.author).count()
+    def to_representation(self, instance):
+        serializer = SubscriptionsSerializer(instance.author,
+                                             context=self.context)
+        return serializer.data
 
     def validate(self, data):
-        pk = self.context['request'].parser_context['kwargs']['id']
-        user = self.context.get('request').user
-        author = get_object_or_404(User, id=pk)
+        user = data.get('user')
+        author = data.get('author')
         if Subscribe.objects.filter(user=user, author=author).exists():
-            raise ValidationError('Вы уже подписаны на этого автора.',
+            raise ValidationError('Вы уже подписаны на этого автора',
                                   code=status.HTTP_400_BAD_REQUEST)
         if user == author:
             raise ValidationError('Нельзя подписаться на себя.',
@@ -254,6 +228,10 @@ class RecipeCreateSerializer(RecipeGetSerializer):
         return recipe
 
     def update(self, instance, validated_data):
+        if 'image' not in validated_data:
+            raise serializers.ValidationError(
+                {'image': 'Добавьте изображение'},
+                code=status.HTTP_400_BAD_REQUEST)
         if 'ingredients' not in validated_data:
             raise serializers.ValidationError(
                 {'ingredients': 'Добавьте ингредиенты'},
@@ -302,6 +280,14 @@ class RecipeCreateSerializer(RecipeGetSerializer):
                 raise ValidationError(
                     {'errors': 'Количество ингредиента должно быть больше 0.'},
                     code=status.HTTP_400_BAD_REQUEST)
+        return value
+
+    def validate_image(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                {'errors': 'Добавьте изображение.'},
+                code=status.HTTP_400_BAD_REQUEST
+            )
         return value
 
 

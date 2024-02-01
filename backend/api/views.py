@@ -47,10 +47,10 @@ class CustomUserViewSet(UserViewSet):
             return User.objects.all()
         return super().get_queryset()
 
-    # def get_permissions(self):
-    #     if self.action == 'me':
-    #         return [IsAuthenticated(),]
-    #     return super().get_permissions()
+    def get_permissions(self):
+        if self.action == 'me':
+            return [IsAuthenticated(),]
+        return super().get_permissions()
 
     @action(
         methods=['get', ],
@@ -104,13 +104,15 @@ class CustomUserViewSet(UserViewSet):
         user = self.request.user
         author = get_object_or_404(User, id=self.kwargs.get('id'))
         if request.method == 'POST':
-            serializer = SubscribeSerializer(
-                data=request.data,
-                context={'request': request, 'author': author})
+            serializer = SubscribeSerializer(data={'user': user.id,
+                                                   'author': author.id},
+                                             context={'request': request})
             if serializer.is_valid():
                 serializer.save(author=author, user=user)
-                return Response({'Подписка успешно создана': serializer.data},
+                return Response(serializer.data,
                                 status=status.HTTP_201_CREATED)
+            return Response(serializer.errors,
+                            status=status.HTTP_400_BAD_REQUEST)
         delete_cnt, _ = Subscribe.objects.filter(user=user,
                                                  author=author).delete()
         if not delete_cnt:
@@ -227,19 +229,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
         "Authorization: Token TOKENVALUE".
         """
         user = self.request.user
-        recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
         if request.method == 'POST':
+            recipe = Recipe.objects.filter(id=kwargs.get('pk'))
+            if not recipe:
+                return Response({'errors': 'Такого рецепта не существует'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            recipe = recipe[0]
             serializer = FavoriteSerializer(data={'user': user.id,
                                                   'recipe': recipe.id},
                                             context={'request': request})
             if serializer.is_valid():
                 serializer.save(user=user, recipe=recipe)
-                return Response(
-                    {'Рецепт добавлен в избранное': serializer.data},
-                    status=status.HTTP_201_CREATED
-                )
+                return Response(serializer.data,
+                                status=status.HTTP_201_CREATED)
             return Response(serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
+        recipe = get_object_or_404(Recipe, id=kwargs.get('pk'))
         delete_cnt, _ = Favorite.objects.filter(user=user,
                                                 recipe=recipe).delete()
         if not delete_cnt:
@@ -263,19 +268,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
         "Authorization: Token TOKENVALUE".
         """
         user = self.request.user
-        recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
         if request.method == 'POST':
+            recipe = Recipe.objects.filter(id=kwargs.get('pk'))
+            if not recipe:
+                return Response({'errors': 'Такого рецепта не существует'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            recipe = recipe[0]
             serializer = ShoppingCartSerializer(data={'author': user.id,
                                                       'recipe': recipe.id},
                                                 context={'request': request})
             if serializer.is_valid():
                 serializer.save(author=user, recipe=recipe)
-                return Response(
-                    {'Рецепт добавлен в список покупок': serializer.data},
-                    status=status.HTTP_201_CREATED
-                )
+                return Response(serializer.data,
+                                status=status.HTTP_201_CREATED)
             return Response(serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
+        recipe = get_object_or_404(Recipe, id=self.kwargs.get('pk'))
         delete_cnt, _ = ShoppingCart.objects.filter(author=user,
                                                     recipe=recipe).delete()
         if not delete_cnt:

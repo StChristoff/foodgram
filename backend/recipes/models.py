@@ -4,9 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 from foodgram.constants import (NAME_LEN, SLUG_LEN, SYM_NUM, MEASURE_UNIT,
                                 COLOR_LEN, MIN_COOK_TIME, MAX_COOK_TIME,
-                                MIN_COOK_TIME_MESS, MAX_COOK_TIME_MESS,
-                                MIN_AMOUNT, MAX_AMOUNT, MIN_AMOUNT_MESS,
-                                MAX_AMOUNT_MESS)
+                                MIN_AMOUNT, MAX_AMOUNT)
 from users.models import User
 
 
@@ -95,8 +93,14 @@ class Recipe(models.Model):
         verbose_name='Время приготовления',
         help_text='Введите время приготовления блюда в минутах',
         validators=[
-            MinValueValidator(MIN_COOK_TIME, MIN_COOK_TIME_MESS),
-            MaxValueValidator(MAX_COOK_TIME, MAX_COOK_TIME_MESS),
+            MinValueValidator(
+                MIN_COOK_TIME,
+                f'Минимальное время приготовления - {MIN_COOK_TIME}'
+            ),
+            MaxValueValidator(
+                MAX_COOK_TIME,
+                f'Максимальное время приготовления - {MAX_COOK_TIME}'
+            ),
         ],
     )
     author = models.ForeignKey(
@@ -152,8 +156,14 @@ class IngredientRecipe(models.Model):
         verbose_name='Количество',
         help_text='Укажите количество выбранного ингредиента',
         validators=[
-            MinValueValidator(MIN_AMOUNT, MIN_AMOUNT_MESS),
-            MaxValueValidator(MAX_AMOUNT, MAX_AMOUNT_MESS),
+            MinValueValidator(
+                MIN_AMOUNT,
+                f'Минимальное количество ингредиента - {MIN_AMOUNT}'
+            ),
+            MaxValueValidator(
+                MAX_AMOUNT,
+                f'Максимальное количество ингредиента - {MAX_AMOUNT}'
+            ),
         ],
     )
 

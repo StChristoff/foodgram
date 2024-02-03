@@ -61,7 +61,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'foodgram.wsgi.application'
 
-DATABASES = {
+PROD_DATABASE = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
         'NAME': os.getenv('DB_NAME', 'postgres'),
@@ -71,6 +71,15 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5432')
     }
 }
+
+TEST_DATABASE = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+DATABASES = TEST_DATABASE if os.getenv('TEST_DATABASE', default=False) == 'True' else PROD_DATABASE
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -120,9 +129,11 @@ AUTH_USER_MODEL = 'users.User'
 DJOSER = {
     'SERIALIZERS': {
         'user': 'api.serializers.CustomUserSerializer',
+        'current_user': 'api.serializers.CustomUserSerializer',
     },
     'PERMISSIONS': {
         'user_list': ['rest_framework.permissions.AllowAny'],
         'user': ['rest_framework.permissions.IsAuthenticatedOrReadOnly'],
     },
+    'HIDE_USERS': False
 }

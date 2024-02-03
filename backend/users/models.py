@@ -26,7 +26,7 @@ class User(AbstractUser):
             f'Введите Псевдоним (не более {USERNAME_LEN} символов). '
             f'Допускаются буквы, цифры, символы @/./+/-/_ .'
         ),
-        validators=[UnicodeUsernameValidator],
+        validators=[UnicodeUsernameValidator()],
     )
     first_name = models.CharField(
         verbose_name='Имя',

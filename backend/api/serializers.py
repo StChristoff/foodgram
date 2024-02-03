@@ -63,9 +63,8 @@ class SubscriptionsSerializer(CustomUserSerializer):
         if limit:
             try:
                 recipes = recipes[:int(limit)]
-            except ValidationError:
-                raise ValidationError({'errors': 'Неверный формат limit'},
-                                      code=status.HTTP_400_BAD_REQUEST)
+            except ValueError:
+                pass
         return RecipeSubscriptionsSerializer(recipes, many=True).data
 
     def get_recipes_count(self, obj):
@@ -183,6 +182,9 @@ class IngredientRecipeCreateSerializer(IngredientRecipeSerializer):
     Сериалайзер для отображения ингредиентов в
      сериалайзере RecipeCreateSerializer.
     """
+    id = serializers.PrimaryKeyRelatedField(source='ingredient',
+                                            queryset=Ingredient.objects.all())
+
     class Meta:
         model = IngredientRecipe
         fields = ('id', 'amount')
@@ -209,86 +211,61 @@ class RecipeCreateSerializer(RecipeGetSerializer):
         serializer = RecipeGetSerializer(instance, context=self.context)
         return serializer.data
 
+    def create_ingredient_recipe(self, ingredients, recipe):
+        IngredientRecipe.objects.bulk_create(
+            [IngredientRecipe(
+                ingredient=ingredient['ingredient'],
+                recipe=recipe,
+                amount=ingredient['amount'])
+             for ingredient in ingredients]
+        )
+
     def create(self, validated_data):
         author = self.context.get('request').user
         ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data, author=author)
-        for ingredient in ingredients:
-            current_ingredient, _ = Ingredient.objects.get_or_create(
-                name=ingredient['ingredient']['id'],
-                measurement_unit=ingredient['ingredient']['id'].
-                measurement_unit
-            )
-            IngredientRecipe.objects.create(
-                ingredient=current_ingredient,
-                recipe=recipe,
-                amount=ingredient['amount'])
+        self.create_ingredient_recipe(ingredients, recipe)
         recipe.tags.set(tags)
         return recipe
 
     def update(self, instance, validated_data):
-        if 'image' not in validated_data:
-            raise serializers.ValidationError(
-                {'image': 'Добавьте изображение'},
-                code=status.HTTP_400_BAD_REQUEST)
-        if 'ingredients' not in validated_data:
-            raise serializers.ValidationError(
-                {'ingredients': 'Добавьте ингредиенты'},
-                code=status.HTTP_400_BAD_REQUEST)
         ingredients = validated_data.pop('ingredients')
-        if 'tags' not in validated_data:
-            raise serializers.ValidationError({'tags': 'Добавьте теги'},
-                                              code=status.HTTP_400_BAD_REQUEST)
         tags = validated_data.pop('tags')
         instance.ingredients.clear()
         instance.tags.clear()
-        for ingredient in ingredients:
-            IngredientRecipe.objects.update_or_create(
-                recipe=instance,
-                ingredient=ingredient['ingredient']['id'],
-                amount=ingredient['amount'])
+        self.create_ingredient_recipe(ingredients, instance)
         instance.tags.set(tags)
         return super().update(instance, validated_data)
 
-    def validate_tags(self, value):
-        tags = value
-        if not tags:
-            raise ValidationError({'tags': 'Выберите тег.'},
-                                  code=status.HTTP_400_BAD_REQUEST)
-        unique_tags = []
-        for tag in tags:
-            if tag in unique_tags:
-                raise ValidationError({'tags': 'Этот тег уже выбран.'},
-                                      code=status.HTTP_400_BAD_REQUEST)
-            unique_tags.append(tag)
-        return value
-
-    def validate_ingredients(self, value):
-        ingredients = value
+    def validate(self, data):
+        ingredients = data.get('ingredients')
         if not ingredients:
             raise ValidationError({'ingredients': 'Выберите ингредиент.'},
                                   code=status.HTTP_400_BAD_REQUEST)
-        unique_ingredients = []
-        for ingredient in ingredients:
-            if ingredient['ingredient']['id'] in unique_ingredients:
-                raise ValidationError(
-                    {'ingredients': 'Этот ингредиент уже добавлен.'},
-                    code=status.HTTP_400_BAD_REQUEST)
-            unique_ingredients.append(ingredient['ingredient']['id'])
-            if ingredient['amount'] <= 0:
-                raise ValidationError(
-                    {'errors': 'Количество ингредиента должно быть больше 0.'},
-                    code=status.HTTP_400_BAD_REQUEST)
-        return value
-
-    def validate_image(self, value):
-        if not value:
-            raise serializers.ValidationError(
-                {'errors': 'Добавьте изображение.'},
+        unique_ingredients = set(
+            [ingredient['ingredient'].id for ingredient in ingredients]
+        )
+        if len(unique_ingredients) != len(ingredients):
+            raise ValidationError(
+                {'ingredients': 'Повторяющиеся ингредиенты.'},
                 code=status.HTTP_400_BAD_REQUEST
             )
-        return value
+        tags = data.get('tags')
+        if not tags:
+            raise ValidationError({'tags': 'Выберите тег.'},
+                                  code=status.HTTP_400_BAD_REQUEST)
+        unique_tags = set([tag.id for tag in tags])
+        if len(unique_tags) != len(tags):
+            raise ValidationError({'tags': 'Повторяющиеся теги.'},
+                                  code=status.HTTP_400_BAD_REQUEST)
+        image = data.get('image')
+        if not image:
+            raise serializers.ValidationError(
+                {'image': 'Добавьте изображение.'},
+                code=status.HTTP_400_BAD_REQUEST
+            )
+        return data
 
 
 class FavoriteShopCartRecipeSerializer(serializers.ModelSerializer):
